@@ -10,3 +10,12 @@ To compile and run the program:
 gcc -o decoyChecker decoyChecker.c
 ./decoyChecker
 ```
+
+## Troubleshooting
+
+When segmentation fault appears, make sure that the file has those permissions:
+
+```bash
+chmod 666 /var/tmp/check_decoy.txt
+chown root:root /var/tmp/check_decoy.txt
+```
