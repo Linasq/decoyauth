@@ -62,7 +62,7 @@ After running the steps in [Compilation](#1-Compilation) you can start `hostapd`
 
 ```
 cd hostapd
-sudo ./hostapd -D nl80211 -c decoyauth-client.conf -i wlan0
+sudo ./hostapd decoyauth-ap.conf
 ```
 
 Note that if the client is using simulated Wi-Fi drivers, then hostapd must also use simulated ones, otherwise they will not be able to communicate.
