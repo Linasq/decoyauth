@@ -3204,7 +3204,14 @@ int sae_ap_check_confirm(struct sae_data *sae, const u8 *data, size_t len,
 			wpa_printf(MSG_DEBUG, "SAE: Confirmation successful");
 
             FILE *fptr = fopen("/var/tmp/check_decoy.txt", "w");
-            fprintf(fptr, "%d", num_arr);
+            if (fptr == NULL) {
+                wpa_printf(MSG_ERROR, "FILE: Error opening the file");
+                fclose(fptr);
+            }
+            if (fprintf(fptr, "%d", num_arr) != 1) {
+                wpa_printf(MSG_ERROR, "FILE: Error writing to the file");
+                fclose(fptr);
+            }
             fclose(fptr);
 
 			for (int j = 0; j < sae->tmp->num_passwords; j++) {
