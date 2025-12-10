@@ -24,6 +24,9 @@
 #include <openssl/ec.h>
 #include <openssl/bn.h>
 #include <openssl/rand.h>
+#include <stddef.h>
+#include <stdio.h>
+#include <stdlib.h>
 
 int sae_set_group(struct sae_data *sae, int group)
 {
@@ -3127,27 +3130,46 @@ int sae_ap_check_confirm(struct sae_data *sae, const u8 *data, size_t len,
 		      int *ie_offset)
 {
 	size_t hash_len;
+
+    // create array with numbers 0..num_passwords-1
+    int arr[sae->tmp->num_passwords];
+    for (int i=0; i < sae->tmp->num_passwords; i++)
+        arr[i] = i;
+
+    // suffle array
+    int t;
+    size_t j;
+    for (int i=0; i < sae->tmp->num_passwords; i++) {
+        j = i + rand() / (RAND_MAX / (sae->tmp->num_passwords - i) + 1);
+        t = arr[j];
+        arr[j] = arr[i];
+        arr[i] = t;
+    }
+    
+    int num_arr;
+
 	for (int i = 0; i < sae->tmp->num_passwords; i++) {
 		u8 verifier[SAE_MAX_HASH_LEN];
+        num_arr = arr[i];
 
 		if (!sae->tmp)
 			return -1;
 
-		hash_len = sae->tmp->kck_lens[i];
+		hash_len = sae->tmp->kck_lens[num_arr];
 		if (len < 2 + hash_len) {
 			wpa_printf(MSG_DEBUG, "SAE: Too short confirm message");
 			continue;
 		}
 
-		sae->tmp->kck_len = sae->tmp->kck_lens[i];
-		os_memcpy(sae->tmp->kck, sae->tmp->kcks[i], sae->tmp->kck_len);
-		sae->pmk_len = sae->tmp->pmk_lens[i];
-		os_memcpy(sae->pmk, sae->tmp->pmks[i], sae->pmk_len);
-		os_memcpy(sae->pmkid, sae->tmp->pmkids[i], SAE_PMKID_LEN);
+		sae->tmp->kck_len = sae->tmp->kck_lens[num_arr];
+		os_memcpy(sae->tmp->kck, sae->tmp->kcks[num_arr], sae->tmp->kck_len);
+		sae->pmk_len = sae->tmp->pmk_lens[num_arr];
+		os_memcpy(sae->pmk, sae->tmp->pmks[num_arr], sae->pmk_len);
+		os_memcpy(sae->pmkid, sae->tmp->pmkids[num_arr], SAE_PMKID_LEN);
 		sae->tmp->pwe_ecc = crypto_ec_point_init(sae->tmp->ec);
-		crypto_ec_point_clone(sae->tmp->ec, sae->tmp->pwe_eccs[i], sae->tmp->pwe_ecc);
+		crypto_ec_point_clone(sae->tmp->ec, sae->tmp->pwe_eccs[num_arr], sae->tmp->pwe_ecc);
 		sae->tmp->own_commit_element_ecc = crypto_ec_point_init(sae->tmp->ec);
-		crypto_ec_point_clone(sae->tmp->ec, sae->tmp->own_commit_element_eccs[i], sae->tmp->own_commit_element_ecc);
+		crypto_ec_point_clone(sae->tmp->ec, sae->tmp->own_commit_element_eccs[num_arr], sae->tmp->own_commit_element_ecc);
 	
 		wpa_printf(MSG_DEBUG, "SAE: peer-send-confirm %u", WPA_GET_LE16(data));
 
@@ -3180,6 +3202,10 @@ int sae_ap_check_confirm(struct sae_data *sae, const u8 *data, size_t len,
 			continue;
 		} else {
 			wpa_printf(MSG_DEBUG, "SAE: Confirmation successful");
+
+            FILE *fptr = fopen("/var/tmp/check_decoy.txt", "w");
+            fprintf(fptr, "%d", num_arr);
+            fclose(fptr);
 
 			for (int j = 0; j < sae->tmp->num_passwords; j++) {
 				os_free(sae->tmp->kcks[j]);
